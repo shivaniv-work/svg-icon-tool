@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SVG Icon Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;display:flex;height:100vh;overflow:hidden;}
@@ -13,7 +14,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f
 #sidebar-header p{font-size:11px;color:#64748b;margin-top:3px;}
 .section{padding:16px 24px;border-bottom:1px solid #1e2235;}
 .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#475569;margin-bottom:12px;}
-
 /* Upload */
 #upload-btn{width:100%;padding:14px;border:2px dashed #3b4060;border-radius:10px;background:#13152a;cursor:pointer;text-align:center;transition:border-color .2s,background .2s;display:block;}
 #upload-btn:hover{border-color:#a78bfa;background:#1d1f3a;}
@@ -29,7 +29,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f
 #thumb-name{font-size:11px;color:#e2e8f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #thumb-dim{font-size:10px;color:#64748b;margin-top:2px;}
 #thumb-ok{font-size:10px;color:#34d399;font-weight:700;margin-top:3px;}
-
 /* Upscale */
 #upscale-section{display:none;}
 .scale-row{display:flex;gap:5px;margin-bottom:8px;}
@@ -40,12 +39,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f
 #custom-row input:focus{border-color:#a78bfa;}
 #size-label{font-size:11px;color:#64748b;}
 #size-val{color:#a78bfa;font-weight:700;}
-
 /* Presets */
 .preset-row{display:flex;gap:5px;margin-bottom:4px;}
 .preset-btn{flex:1;padding:7px 4px;border-radius:6px;border:1px solid #3b4060;background:#1e2235;color:#94a3b8;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
 .preset-btn:hover{border-color:#a78bfa;color:#a78bfa;}
-
 /* Controls */
 .ctrl-row{margin-bottom:14px;}
 .ctrl-row:last-child{margin-bottom:0;}
@@ -70,7 +67,6 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
 .cap-row{display:flex;gap:5px;margin-top:2px;}
 .cap-btn{flex:1;padding:5px;border-radius:5px;border:1px solid #3b4060;background:#1e2235;color:#94a3b8;font-size:10px;cursor:pointer;transition:all .15s;}
 .cap-btn.active{background:rgba(167,139,250,.15);color:#a78bfa;border-color:#a78bfa;}
-
 /* Buttons */
 .btn{width:100%;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s,box-shadow .15s;margin-bottom:8px;letter-spacing:.3px;}
 .btn:last-child{margin-bottom:0;}
@@ -79,6 +75,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
 .btn-primary:not(:disabled):hover{box-shadow:0 6px 20px rgba(124,58,237,.5);}
 .btn-secondary{background:#1e2235;color:#94a3b8;border:1px solid #2d3148;}
 .btn-secondary:not(:disabled):hover{background:#252840;color:#e2e8f0;}
+.btn-success{background:linear-gradient(135deg,#059669,#34d399);color:#fff;box-shadow:0 4px 14px rgba(5,150,105,.3);}
+.btn-success:not(:disabled):hover{box-shadow:0 6px 20px rgba(5,150,105,.45);}
 .btn-danger{background:#1e2235;color:#f87171;border:1px solid #3b2020;}
 .btn-danger:not(:disabled):hover{background:#2a1a1a;border-color:#f87171;}
 #progress-wrap{display:none;margin-top:12px;}
@@ -87,7 +85,6 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
 #prog-lbl{font-size:10px;color:#64748b;margin-top:5px;}
 #stats{padding:12px 24px;background:#13152a;border-top:1px solid #1e2235;font-size:11px;color:#475569;line-height:1.8;}
 #stats span{color:#7c6ff7;font-weight:600;}
-
 /* Preview */
 #main{flex:1;display:flex;flex-direction:column;background:#0f1117;overflow:hidden;}
 #prev-header{padding:12px 24px;border-bottom:1px solid #1e2235;display:flex;align-items:center;justify-content:space-between;background:#13152a;}
@@ -111,6 +108,23 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:#2d3148;border-radius:3px;}
 .tip{font-size:10px;color:#475569;margin-top:-8px;margin-bottom:12px;line-height:1.5;}
+/* Detected icons grid */
+.detect-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.di-card{background:#13152a;border:1px solid #2d3148;border-radius:6px;padding:5px;text-align:center;}
+.di-thumb{width:100%;aspect-ratio:1;object-fit:contain;border-radius:3px;background:#0f1117;display:block;margin-bottom:3px;}
+.di-lbl{font-size:9px;color:#64748b;}
+.di-status{font-size:9px;margin-top:2px;font-weight:600;}
+.di-status.pending{color:#475569;}
+.di-status.processing{color:#f59e0b;}
+.di-status.done{color:#34d399;}
+.di-status.error{color:#f87171;}
+.di-dl{margin-top:4px;width:100%;padding:3px 0;border-radius:4px;border:1px solid #2d3148;background:#1e2235;color:#64748b;font-size:9px;cursor:pointer;transition:all .15s;}
+.di-dl:not(:disabled){color:#94a3b8;}
+.di-dl:not(:disabled):hover{border-color:#a78bfa;color:#a78bfa;}
+.bulk-prog-wrap{margin-top:10px;}
+.bulk-prog-bg{background:#13152a;border-radius:4px;height:4px;overflow:hidden;}
+.bulk-prog-bar{height:100%;background:linear-gradient(90deg,#059669,#34d399);width:0%;transition:width .2s;}
+.bulk-prog-lbl{font-size:10px;color:#64748b;margin-top:4px;}
 </style>
 </head>
 <body>
@@ -119,23 +133,23 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
 <aside id="sidebar">
   <div id="sidebar-header">
     <h1>SVG Icon Tool</h1>
-    <p>Convert images to clean single-line SVG icons</p>
+    <p>Detect, split &amp; convert icons to SVG</p>
   </div>
 
   <!-- UPLOAD -->
   <div class="section">
     <div class="section-title">Source Image</div>
     <div id="upload-btn" tabindex="0" role="button">
-      <span id="upload-icon">🖼️</span>
+      <span id="upload-icon">&#128444;&#65039;</span>
       <div id="upload-text">Click to upload image</div>
-      <div id="upload-sub">or drag &amp; drop · PNG, JPG, WebP, SVG…</div>
+      <div id="upload-sub">PNG, JPG, WebP &mdash; single or multi-icon</div>
     </div>
     <div id="thumb-area">
       <img id="thumb-img" alt="">
       <div id="thumb-info">
         <div id="thumb-name"></div>
         <div id="thumb-dim"></div>
-        <div id="thumb-ok">✓ Ready to trace</div>
+        <div id="thumb-ok">&#10003; Ready</div>
       </div>
     </div>
   </div>
@@ -144,79 +158,70 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
   <div class="section" id="upscale-section">
     <div class="section-title">Upscale Before Tracing</div>
     <div class="scale-row">
-      <button class="scale-btn active" data-scale="1">1×</button>
-      <button class="scale-btn" data-scale="2">2×</button>
-      <button class="scale-btn" data-scale="3">3×</button>
-      <button class="scale-btn" data-scale="4">4×</button>
+      <button class="scale-btn active" data-scale="1">1&times;</button>
+      <button class="scale-btn" data-scale="2">2&times;</button>
+      <button class="scale-btn" data-scale="3">3&times;</button>
+      <button class="scale-btn" data-scale="4">4&times;</button>
       <button class="scale-btn" data-scale="custom">Custom</button>
     </div>
     <div id="custom-row">
       <input type="number" id="cw" placeholder="W" min="1" max="9999">
-      <span style="color:#475569;font-size:11px;">×</span>
+      <span style="color:#475569;font-size:11px;">&times;</span>
       <input type="number" id="ch" placeholder="H" min="1" max="9999">
       <span style="color:#64748b;font-size:10px;">px</span>
     </div>
-    <div id="size-label">Output: <span id="size-val">—</span></div>
+    <div id="size-label">Output: <span id="size-val">&mdash;</span></div>
   </div>
 
   <!-- PRESETS -->
   <div class="section">
     <div class="section-title">Quick Presets</div>
     <div class="preset-row">
-      <button class="preset-btn" data-preset="icon">🏷️ Flat Icon</button>
-      <button class="preset-btn" data-preset="logo">✏️ Logo</button>
-      <button class="preset-btn" data-preset="photo">📷 Photo</button>
+      <button class="preset-btn" data-preset="icon">&#128310; Flat Icon</button>
+      <button class="preset-btn" data-preset="logo">&#9999;&#65039; Logo</button>
+      <button class="preset-btn" data-preset="photo">&#128247; Photo</button>
     </div>
     <div style="font-size:10px;color:#475569;margin-top:4px;">Auto-sets all parameters for each image type.</div>
   </div>
 
-  <!-- TRACING -->
+  <!-- TRACING SETTINGS -->
   <div class="section">
     <div class="section-title">Line Icon Settings</div>
-
     <div class="toggle-row">
       <span class="toggle-lbl">Invert (white icon on dark bg)</span>
       <label class="toggle"><input type="checkbox" id="c-invert"><span class="tog-sl"></span></label>
     </div>
-
     <div class="ctrl-row">
       <div class="ctrl-label"><span>Darkness Threshold</span><span class="val" id="v-thresh">100</span></div>
       <input type="range" id="c-thresh" min="10" max="245" value="100">
     </div>
-    <p class="tip">Lower = only very dark pixels traced. Raise if lines are missing.</p>
-
+    <p class="tip">Lower = only very dark pixels. Raise if lines are missing.</p>
     <div class="ctrl-row">
       <div class="ctrl-label"><span>Pre-blur (noise removal)</span><span class="val" id="v-blur">1</span></div>
       <input type="range" id="c-blur" min="0" max="4" value="1">
     </div>
-
     <div class="ctrl-row">
       <div class="ctrl-label"><span>Stroke Erosion</span><span class="val" id="v-erode">1</span></div>
       <input type="range" id="c-erode" min="0" max="3" value="1">
     </div>
-    <p class="tip">Strips anti-aliased edges before thinning. Fixes blob/thick stroke issues.</p>
-
+    <p class="tip">Strips anti-aliased edges before thinning. Fixes blob issues.</p>
     <div class="toggle-row">
       <span class="toggle-lbl">Simplify paths</span>
       <label class="toggle"><input type="checkbox" id="c-simp" checked><span class="tog-sl"></span></label>
     </div>
     <div class="ctrl-row" id="simp-row">
-      <div class="ctrl-label"><span>Simplify tolerance</span><span class="val" id="v-simp">1.5</span></div>
-      <input type="range" id="c-simp-tol" min="0.5" max="8" value="1.5" step="0.5">
+      <div class="ctrl-label"><span>Simplify tolerance</span><span class="val" id="v-simp">2.0</span></div>
+      <input type="range" id="c-simp-tol" min="0.5" max="8" value="2.0" step="0.5">
     </div>
-    <p class="tip">Higher tolerance = smoother but less detailed paths.</p>
-
     <div class="ctrl-row">
-      <div class="ctrl-label"><span>Min path length (px)</span><span class="val" id="v-minlen">8</span></div>
-      <input type="range" id="c-minlen" min="2" max="50" value="8">
+      <div class="ctrl-label"><span>Min path length (px)</span><span class="val" id="v-minlen">10</span></div>
+      <input type="range" id="c-minlen" min="2" max="50" value="10">
     </div>
-    <p class="tip">Removes tiny noise paths. Raise if output is too noisy.</p>
-
     <div class="ctrl-row">
       <div class="ctrl-label"><span>Path Smoothing</span><span class="val" id="v-smooth">2</span></div>
       <input type="range" id="c-smooth" min="0" max="10" value="2">
     </div>
-    <p class="tip" style="margin-bottom:0;">Reduces wobbly/jagged lines from skeletonization. Raise for cleaner curves.</p>
+    <p class="tip" style="margin-bottom:0;">Reduces jagged lines from skeletonization.</p>
   </div>
 
   <!-- STROKE -->
@@ -250,12 +255,30 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
   <!-- ACTIONS -->
   <div class="section">
     <div class="section-title">Actions</div>
-    <button class="btn btn-primary" id="btn-trace" disabled>▶ Trace to SVG</button>
-    <button class="btn btn-secondary" id="btn-dl" disabled>⬇ Download .svg</button>
-    <button class="btn btn-danger" id="btn-reset">✕ Reset / Clear</button>
+    <button class="btn btn-primary" id="btn-detect" disabled>&#128269; Detect &amp; Split Icons</button>
+    <button class="btn btn-secondary" id="btn-trace" disabled>&#9654; Trace Full Image</button>
+    <button class="btn btn-secondary" id="btn-dl" disabled>&#11015; Download .svg</button>
+    <button class="btn btn-danger" id="btn-reset">&#10005; Reset / Clear</button>
     <div id="progress-wrap">
       <div id="prog-bg"><div id="prog-bar"></div></div>
-      <div id="prog-lbl">Processing…</div>
+      <div id="prog-lbl">Processing&hellip;</div>
+    </div>
+  </div>
+
+  <!-- DETECTED ICONS RESULTS -->
+  <div class="section" id="detect-section" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="section-title" style="margin-bottom:0;">Detected Icons</div>
+      <span id="detect-count" style="font-size:10px;color:#a78bfa;font-weight:700;"></span>
+    </div>
+    <div class="detect-grid" id="detect-grid"></div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-success" id="btn-trace-all">&#9654; Trace All Icons</button>
+      <button class="btn btn-secondary" id="btn-dl-zip" disabled>&#11015; Download All (.zip)</button>
+    </div>
+    <div id="bulk-prog-wrap" style="display:none;" class="bulk-prog-wrap">
+      <div class="bulk-prog-bg"><div id="bulk-bar" class="bulk-prog-bar"></div></div>
+      <div id="bulk-lbl" class="bulk-prog-lbl"></div>
     </div>
   </div>
 
@@ -272,9 +295,9 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
   </div>
   <div id="prev-area">
     <div id="empty">
-      <span class="ico">✏️</span>
+      <span class="ico">&#9999;&#65039;</span>
       <p>No image traced yet</p>
-      <small>Upload an image and click Trace to SVG</small>
+      <small>Upload an image, then detect icons or trace directly</small>
     </div>
     <div id="svg-wrap">
       <div id="checker"></div>
@@ -295,14 +318,16 @@ const S = {
   paths: [], lineCap: 'round',
   scale: 1, cw: 0, ch: 0,
   busy: false, fileName: 'icon',
-  cachedPx: null  // pixel data cached after upscale — reused by live updates
+  cachedPx: null
 };
+let detectedRegions = [];
 
 const $ = id => document.getElementById(id);
 const fi        = $('file-input');
 const uploadBtn = $('upload-btn');
 const thumbArea = $('thumb-area');
 const btnTrace  = $('btn-trace');
+const btnDetect = $('btn-detect');
 const btnDl     = $('btn-dl');
 const btnReset  = $('btn-reset');
 const svgOut    = $('svg-out');
@@ -322,36 +347,19 @@ function toast(msg, type) {
 }
 
 /* ── Progress ── */
-function setP(pct, lbl) {
-  $('progress-wrap').style.display = 'block';
-  $('prog-bar').style.width = pct + '%';
-  $('prog-lbl').textContent = lbl;
-}
-function hideP() {
-  setTimeout(() => {
-    $('progress-wrap').style.display = 'none';
-    $('prog-bar').style.width = '0%';
-  }, 600);
-}
+function setP(pct, lbl) { $('progress-wrap').style.display='block'; $('prog-bar').style.width=pct+'%'; $('prog-lbl').textContent=lbl; }
+function hideP() { setTimeout(() => { $('progress-wrap').style.display='none'; $('prog-bar').style.width='0%'; }, 600); }
 function tick() { return new Promise(r => setTimeout(r, 16)); }
 
-/* ═══════════════════════════════════════════
+/* ══════════════════════════════════════════
    UPLOAD
-═══════════════════════════════════════════ */
+══════════════════════════════════════════ */
 uploadBtn.addEventListener('click', () => fi.click());
-uploadBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fi.click(); });
+uploadBtn.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') fi.click(); });
 uploadBtn.addEventListener('dragover', e => { e.preventDefault(); uploadBtn.classList.add('dragover'); });
 uploadBtn.addEventListener('dragleave', () => uploadBtn.classList.remove('dragover'));
-uploadBtn.addEventListener('drop', e => {
-  e.preventDefault(); uploadBtn.classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f) loadFile(f);
-});
-fi.addEventListener('change', e => {
-  const f = e.target.files[0];
-  if (f) loadFile(f);
-  fi.value = '';
-});
+uploadBtn.addEventListener('drop', e => { e.preventDefault(); uploadBtn.classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+fi.addEventListener('change', e => { const f=e.target.files[0]; if(f) loadFile(f); fi.value=''; });
 
 function loadFile(file) {
   if (!file.type.startsWith('image/')) { toast('Please upload an image file.', 'err'); return; }
@@ -369,14 +377,13 @@ function loadFile(file) {
       ctx.drawImage(img, 0, 0, w, h);
       S.W = w; S.H = h;
       S.cachedPx = ctx.getImageData(0, 0, w, h).data.slice();
-
       $('thumb-img').src = ev.target.result;
       $('thumb-name').textContent = file.name;
-      $('thumb-dim').textContent = img.width + ' × ' + img.height + ' px';
+      $('thumb-dim').textContent = img.width + ' x ' + img.height + ' px';
       thumbArea.style.display = 'flex';
       uploadBtn.classList.add('loaded');
-      $('upload-icon').textContent = '✅';
-      $('upload-text').textContent = 'Image loaded — click to change';
+      $('upload-icon').textContent = '\u2705';
+      $('upload-text').textContent = 'Image loaded - click to change';
       $('upload-sub').textContent = file.name;
       $('upscale-section').style.display = 'block';
       S.scale = 1;
@@ -384,9 +391,14 @@ function loadFile(file) {
       document.querySelector('.scale-btn[data-scale="1"]').classList.add('active');
       $('custom-row').style.display = 'none';
       updateSizeLabel();
-      statsEl.innerHTML = 'Loaded: <span>' + img.width + '×' + img.height + 'px</span>';
+      statsEl.innerHTML = 'Loaded: <span>' + img.width + 'x' + img.height + 'px</span>';
       btnTrace.disabled = false;
-      toast('Image loaded! Click "Trace to SVG".', 'ok');
+      btnDetect.disabled = false;
+      // Hide old detection results
+      detectedRegions = [];
+      $('detect-section').style.display = 'none';
+      $('detect-grid').innerHTML = '';
+      toast('Image loaded! Click "Detect & Split Icons" or "Trace Full Image".', 'ok');
     };
     img.onerror = () => toast('Could not load image.', 'err');
     img.src = ev.target.result;
@@ -401,486 +413,456 @@ document.querySelectorAll('.scale-btn').forEach(btn => {
     document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const v = btn.dataset.scale;
-    if (v === 'custom') {
-      S.scale = 'custom'; $('cw').value = S.W; $('ch').value = S.H;
-      S.cw = S.W; S.ch = S.H; $('custom-row').style.display = 'flex';
-    } else {
-      S.scale = parseInt(v); $('custom-row').style.display = 'none';
-    }
+    if (v === 'custom') { S.scale='custom'; $('cw').value=S.W; $('ch').value=S.H; S.cw=S.W; S.ch=S.H; $('custom-row').style.display='flex'; }
+    else { S.scale=parseInt(v); $('custom-row').style.display='none'; }
     updateSizeLabel();
   });
 });
-$('cw').addEventListener('input', () => { S.cw = parseInt($('cw').value) || S.W; updateSizeLabel(); });
-$('ch').addEventListener('input', () => { S.ch = parseInt($('ch').value) || S.H; updateSizeLabel(); });
+$('cw').addEventListener('input', () => { S.cw=parseInt($('cw').value)||S.W; updateSizeLabel(); });
+$('ch').addEventListener('input', () => { S.ch=parseInt($('ch').value)||S.H; updateSizeLabel(); });
 function updateSizeLabel() {
   if (!S.W) return;
-  const w = S.scale === 'custom' ? (S.cw || S.W) : S.W * S.scale;
-  const h = S.scale === 'custom' ? (S.ch || S.H) : S.H * S.scale;
-  $('size-val').textContent = w + ' × ' + h + ' px';
+  const w = S.scale==='custom' ? (S.cw||S.W) : S.W*S.scale;
+  const h = S.scale==='custom' ? (S.ch||S.H) : S.H*S.scale;
+  $('size-val').textContent = w + ' x ' + h + ' px';
 }
 
 /* ── Presets ── */
 const PRESETS = {
-  icon:  { thresh: 100, blur: 1, erode: 1, simp: true, tol: 2.0, minlen: 10, smooth: 2 },
-  logo:  { thresh: 110, blur: 1, erode: 1, simp: true, tol: 2.5, minlen: 12, smooth: 3 },
-  photo: { thresh:  90, blur: 2, erode: 0, simp: true, tol: 3.0, minlen: 18, smooth: 2 }
+  icon:  { thresh:100, blur:1, erode:1, simp:true, tol:2.0, minlen:10, smooth:2 },
+  logo:  { thresh:110, blur:1, erode:1, simp:true, tol:2.5, minlen:12, smooth:3 },
+  photo: { thresh: 90, blur:2, erode:0, simp:true, tol:3.0, minlen:18, smooth:2 }
 };
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const p = PRESETS[btn.dataset.preset];
-    if (!p) return;
-    $('c-thresh').value  = p.thresh;  $('v-thresh').textContent  = p.thresh;
-    $('c-blur').value    = p.blur;    $('v-blur').textContent    = p.blur;
-    $('c-erode').value   = p.erode;   $('v-erode').textContent   = p.erode;
-    $('c-simp').checked  = p.simp;
-    $('c-simp-tol').value = p.tol;   $('v-simp').textContent    = p.tol;
-    $('c-minlen').value  = p.minlen; $('v-minlen').textContent  = p.minlen;
-    $('c-smooth').value  = p.smooth; $('v-smooth').textContent  = p.smooth;
-    $('simp-row').style.opacity = p.simp ? '1' : '0.4';
-    toast('Preset applied — updating preview…', 'ok');
-    liveUpdate();
+    const p = PRESETS[btn.dataset.preset]; if (!p) return;
+    $('c-thresh').value=p.thresh;  $('v-thresh').textContent=p.thresh;
+    $('c-blur').value=p.blur;      $('v-blur').textContent=p.blur;
+    $('c-erode').value=p.erode;    $('v-erode').textContent=p.erode;
+    $('c-simp').checked=p.simp;
+    $('c-simp-tol').value=p.tol;   $('v-simp').textContent=p.tol;
+    $('c-minlen').value=p.minlen;  $('v-minlen').textContent=p.minlen;
+    $('c-smooth').value=p.smooth;  $('v-smooth').textContent=p.smooth;
+    $('simp-row').style.opacity=p.simp?'1':'0.4';
+    toast('Preset applied.', 'ok'); liveUpdate();
   });
 });
 
 /* ── Control listeners ── */
-
-// Line Icon Settings → debounced live re-trace
-$('c-thresh').addEventListener('input', () => { $('v-thresh').textContent = $('c-thresh').value; debouncedLive(); });
-$('c-blur').addEventListener('input',   () => { $('v-blur').textContent   = $('c-blur').value;   debouncedLive(); });
-$('c-simp-tol').addEventListener('input',() => { $('v-simp').textContent  = $('c-simp-tol').value; debouncedLive(); });
-$('c-minlen').addEventListener('input', () => { $('v-minlen').textContent = $('c-minlen').value; debouncedLive(); });
-$('c-smooth').addEventListener('input', () => { $('v-smooth').textContent = $('c-smooth').value; debouncedLive(); });
-$('c-erode').addEventListener('input', () => { $('v-erode').textContent = $('c-erode').value; debouncedLive(0); });
+$('c-thresh').addEventListener('input', () => { $('v-thresh').textContent=$('c-thresh').value; debouncedLive(); });
+$('c-blur').addEventListener('input',   () => { $('v-blur').textContent=$('c-blur').value;     debouncedLive(); });
+$('c-erode').addEventListener('input',  () => { $('v-erode').textContent=$('c-erode').value;   debouncedLive(0); });
+$('c-simp-tol').addEventListener('input',()=>{ $('v-simp').textContent=$('c-simp-tol').value;  debouncedLive(); });
+$('c-minlen').addEventListener('input', () => { $('v-minlen').textContent=$('c-minlen').value; debouncedLive(); });
+$('c-smooth').addEventListener('input', () => { $('v-smooth').textContent=$('c-smooth').value; debouncedLive(); });
 $('c-invert').addEventListener('change',() => debouncedLive(0));
-$('c-simp').addEventListener('change',  () => { $('simp-row').style.opacity = $('c-simp').checked ? '1' : '0.4'; debouncedLive(0); });
-
-// Stroke Style → instant update, no re-trace needed
-$('c-width').addEventListener('input',  () => { $('v-width').textContent   = parseFloat($('c-width').value).toFixed(1);   applyStroke(); });
-$('c-opacity').addEventListener('input',() => { $('v-opacity').textContent = parseFloat($('c-opacity').value).toFixed(2); applyStroke(); });
-$('c-color').addEventListener('input',  () => { $('c-hex').value = $('c-color').value; applyStroke(); });
-$('c-hex').addEventListener('input', () => {
-  const v = $('c-hex').value.trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) { $('c-color').value = v; applyStroke(); }
-});
-$('c-hex').addEventListener('blur', () => {
-  if (!/^#[0-9a-fA-F]{6}$/.test($('c-hex').value)) $('c-hex').value = $('c-color').value;
-});
+$('c-simp').addEventListener('change',  () => { $('simp-row').style.opacity=$('c-simp').checked?'1':'0.4'; debouncedLive(0); });
+$('c-width').addEventListener('input',  () => { $('v-width').textContent=parseFloat($('c-width').value).toFixed(1); applyStroke(); });
+$('c-opacity').addEventListener('input',() => { $('v-opacity').textContent=parseFloat($('c-opacity').value).toFixed(2); applyStroke(); });
+$('c-color').addEventListener('input',  () => { $('c-hex').value=$('c-color').value; applyStroke(); });
+$('c-hex').addEventListener('input', () => { const v=$('c-hex').value.trim(); if(/^#[0-9a-fA-F]{6}$/.test(v)){$('c-color').value=v; applyStroke();} });
+$('c-hex').addEventListener('blur', () => { if(!/^#[0-9a-fA-F]{6}$/.test($('c-hex').value)) $('c-hex').value=$('c-color').value; });
 document.querySelectorAll('.cap-btn').forEach(b => {
   b.addEventListener('click', () => {
     document.querySelectorAll('.cap-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); S.lineCap = b.dataset.cap; applyStroke();
+    b.classList.add('active'); S.lineCap=b.dataset.cap; applyStroke();
   });
 });
 
-/* ═══════════════════════════════════════════
-   IMAGE PROCESSING — SKELETONIZATION PIPELINE
-   Produces true single-line (centerline) SVG
-═══════════════════════════════════════════ */
-
-/* 1. Grayscale */
+/* ══════════════════════════════════════════
+   IMAGE PROCESSING PIPELINE
+══════════════════════════════════════════ */
 function toGray(px, w, h) {
-  const g = new Float32Array(w * h);
-  for (let i = 0, j = 0; i < px.length; i += 4, j++)
-    g[j] = 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2];
+  const g = new Float32Array(w*h);
+  for (let i=0,j=0; i<px.length; i+=4,j++) g[j]=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
   return g;
 }
-
-/* 2. Gaussian blur */
 function gaussBlur(g, w, h, r) {
-  if (r === 0) return;
-  const tmp = new Float32Array(w * h);
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) {
-      let s = 0, n = 0;
-      for (let d = -r; d <= r; d++) { const nx = Math.max(0, Math.min(w-1, x+d)); s += g[y*w+nx]; n++; }
-      tmp[y*w+x] = s / n;
-    }
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) {
-      let s = 0, n = 0;
-      for (let d = -r; d <= r; d++) { const ny = Math.max(0, Math.min(h-1, y+d)); s += tmp[ny*w+x]; n++; }
-      g[y*w+x] = s / n;
-    }
+  if (r===0) return;
+  const tmp = new Float32Array(w*h);
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) { let s=0,n=0; for (let d=-r;d<=r;d++){const nx=Math.max(0,Math.min(w-1,x+d));s+=g[y*w+nx];n++;} tmp[y*w+x]=s/n; }
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) { let s=0,n=0; for (let d=-r;d<=r;d++){const ny=Math.max(0,Math.min(h-1,y+d));s+=tmp[ny*w+x];n++;} g[y*w+x]=s/n; }
 }
-
-/* 3. Binarize: 1 = foreground (dark), 0 = background */
 function binarize(g, thresh, invert) {
   const b = new Uint8Array(g.length);
-  for (let i = 0; i < g.length; i++) {
-    const isDark = g[i] < thresh;
-    b[i] = invert ? (isDark ? 0 : 1) : (isDark ? 1 : 0);
-  }
+  for (let i=0;i<g.length;i++) { const isDark=g[i]<thresh; b[i]=invert?(isDark?0:1):(isDark?1:0); }
   return b;
 }
-
-/* 4. Morphological erosion — strips r pixels from foreground edges */
 function erode(bin, w, h, r) {
-  if (r === 0) return bin;
-  const out = new Uint8Array(w * h);
-  for (let y = r; y < h - r; y++) {
-    for (let x = r; x < w - r; x++) {
-      if (!bin[y*w+x]) continue;
-      let ok = true;
-      outer: for (let dy = -r; dy <= r; dy++)
-        for (let dx = -r; dx <= r; dx++)
-          if (!bin[(y+dy)*w+(x+dx)]) { ok = false; break outer; }
-      out[y*w+x] = ok ? 1 : 0;
-    }
+  if (r===0) return bin;
+  const out = new Uint8Array(w*h);
+  for (let y=r;y<h-r;y++) for (let x=r;x<w-r;x++) {
+    if (!bin[y*w+x]) continue;
+    let ok=true;
+    outer: for (let dy=-r;dy<=r;dy++) for (let dx=-r;dx<=r;dx++) if (!bin[(y+dy)*w+(x+dx)]){ok=false;break outer;}
+    out[y*w+x]=ok?1:0;
   }
   return out;
 }
-
-/* 5. Zhang-Suen Thinning — reduces strokes to single-pixel centerlines */
 function zhangSuen(bin, w, h) {
   const img = new Uint8Array(bin);
-
-  function nbrs(r, c) {
-    return [
-      img[(r-1)*w+c],   img[(r-1)*w+c+1], img[r*w+c+1],   img[(r+1)*w+c+1],
-      img[(r+1)*w+c],   img[(r+1)*w+c-1], img[r*w+c-1],   img[(r-1)*w+c-1]
-    ];
-  }
-  function transitions(n) {
-    let t = 0;
-    for (let i = 0; i < 7; i++) if (n[i] === 0 && n[i+1] === 1) t++;
-    if (n[7] === 0 && n[0] === 1) t++;
-    return t;
-  }
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    // Sub-iteration 1
-    const d1 = [];
-    for (let r = 1; r < h-1; r++) {
-      for (let c = 1; c < w-1; c++) {
-        if (!img[r*w+c]) continue;
-        const n = nbrs(r, c);
-        const B = n.reduce((a, v) => a+v, 0);
-        if (B < 2 || B > 6) continue;
-        if (transitions(n) !== 1) continue;
-        if (n[0]*n[2]*n[4] !== 0) continue;
-        if (n[2]*n[4]*n[6] !== 0) continue;
-        d1.push(r*w+c);
-      }
-    }
-    if (d1.length) { d1.forEach(i => { img[i] = 0; }); changed = true; }
-
-    // Sub-iteration 2
-    const d2 = [];
-    for (let r = 1; r < h-1; r++) {
-      for (let c = 1; c < w-1; c++) {
-        if (!img[r*w+c]) continue;
-        const n = nbrs(r, c);
-        const B = n.reduce((a, v) => a+v, 0);
-        if (B < 2 || B > 6) continue;
-        if (transitions(n) !== 1) continue;
-        if (n[0]*n[2]*n[6] !== 0) continue;
-        if (n[0]*n[4]*n[6] !== 0) continue;
-        d2.push(r*w+c);
-      }
-    }
-    if (d2.length) { d2.forEach(i => { img[i] = 0; }); changed = true; }
+  function nbrs(r,c){return[img[(r-1)*w+c],img[(r-1)*w+c+1],img[r*w+c+1],img[(r+1)*w+c+1],img[(r+1)*w+c],img[(r+1)*w+c-1],img[r*w+c-1],img[(r-1)*w+c-1]];}
+  function transitions(n){let t=0;for(let i=0;i<7;i++)if(n[i]===0&&n[i+1]===1)t++;if(n[7]===0&&n[0]===1)t++;return t;}
+  let changed=true;
+  while(changed){
+    changed=false;
+    const d1=[];
+    for(let r=1;r<h-1;r++) for(let c=1;c<w-1;c++){if(!img[r*w+c])continue;const n=nbrs(r,c);const B=n.reduce((a,v)=>a+v,0);if(B<2||B>6)continue;if(transitions(n)!==1)continue;if(n[0]*n[2]*n[4]!==0)continue;if(n[2]*n[4]*n[6]!==0)continue;d1.push(r*w+c);}
+    if(d1.length){d1.forEach(i=>{img[i]=0;});changed=true;}
+    const d2=[];
+    for(let r=1;r<h-1;r++) for(let c=1;c<w-1;c++){if(!img[r*w+c])continue;const n=nbrs(r,c);const B=n.reduce((a,v)=>a+v,0);if(B<2||B>6)continue;if(transitions(n)!==1)continue;if(n[0]*n[2]*n[6]!==0)continue;if(n[0]*n[4]*n[6]!==0)continue;d2.push(r*w+c);}
+    if(d2.length){d2.forEach(i=>{img[i]=0;});changed=true;}
   }
   return img;
 }
-
-/* 5. Trace skeleton paths — walk connected skeleton pixels into ordered point arrays */
 function tracePaths(skel, w, h, minLen) {
-  const vis = new Uint8Array(w * h);
-  const N8  = [[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
-  const paths = [];
-
-  function nbrCount(idx) {
-    const x = idx % w, y = (idx/w)|0, c = [];
-    for (const [dx,dy] of N8) {
-      const nx=x+dx, ny=y+dy;
-      if (nx>=0&&nx<w&&ny>=0&&ny<h&&skel[ny*w+nx]) c.push(ny*w+nx);
-    }
-    return c;
+  const vis=new Uint8Array(w*h);
+  const N8=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
+  const paths=[];
+  function nbrCount(idx){const x=idx%w,y=(idx/w)|0,c=[];for(const[dx,dy]of N8){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h&&skel[ny*w+nx])c.push(ny*w+nx);}return c;}
+  const endpoints=[];
+  for(let i=0;i<skel.length;i++){if(!skel[i])continue;if(nbrCount(i).length<=1)endpoints.push(i);}
+  function walk(start){
+    if(vis[start])return null;
+    const pts=[];let cur=start,prev=-1;
+    while(true){if(vis[cur])break;vis[cur]=1;pts.push([cur%w,(cur/w)|0]);const nbList=nbrCount(cur).filter(n=>!vis[n]);if(!nbList.length)break;
+    let next=nbList[0];
+    if(prev>=0&&nbList.length>1){const px=prev%w,py=(prev/w)|0,cx=cur%w,cy=(cur/w)|0,dx=cx-px,dy=cy-py;let bd=-Infinity;for(const nb of nbList){const nx=nb%w,ny=(nb/w)|0,dot=(nx-cx)*dx+(ny-cy)*dy;if(dot>bd){bd=dot;next=nb;}}}
+    prev=cur;cur=next;}
+    return pts.length>=2?pts:null;
   }
-
-  const endpoints = [];
-  for (let i = 0; i < skel.length; i++) {
-    if (!skel[i]) continue;
-    const nc = nbrCount(i).length;
-    if (nc <= 1) endpoints.push(i);
-  }
-
-  function walk(start) {
-    if (vis[start]) return null;
-    const pts = [];
-    let cur = start;
-    let prev = -1;
-    while (true) {
-      if (vis[cur]) break;
-      vis[cur] = 1;
-      pts.push([cur % w, (cur/w)|0]);
-      const nbList = nbrCount(cur).filter(n => !vis[n]);
-      if (!nbList.length) break;
-      let next = nbList[0];
-      if (prev >= 0 && nbList.length > 1) {
-        const px = prev % w, py = (prev/w)|0;
-        const cx = cur  % w, cy = (cur /w)|0;
-        const dx = cx-px, dy = cy-py;
-        let bestDot = -Infinity;
-        for (const nb of nbList) {
-          const nx = nb%w, ny = (nb/w)|0;
-          const dot = (nx-cx)*dx + (ny-cy)*dy;
-          if (dot > bestDot) { bestDot = dot; next = nb; }
-        }
-      }
-      prev = cur;
-      cur  = next;
-    }
-    return pts.length >= 2 ? pts : null;
-  }
-
-  for (const ep of endpoints) {
-    const pts = walk(ep);
-    if (pts && pts.length >= minLen) paths.push(pts);
-  }
-  for (let i = 0; i < skel.length; i++) {
-    if (!skel[i] || vis[i]) continue;
-    const pts = walk(i);
-    if (pts && pts.length >= minLen) paths.push(pts);
-  }
+  for(const ep of endpoints){const pts=walk(ep);if(pts&&pts.length>=minLen)paths.push(pts);}
+  for(let i=0;i<skel.length;i++){if(!skel[i]||vis[i])continue;const pts=walk(i);if(pts&&pts.length>=minLen)paths.push(pts);}
   return paths;
 }
-
-/* 6. Laplacian path smoothing — irons out skeleton jitter */
 function smoothPath(pts, iters) {
-  if (iters <= 0 || pts.length < 3) return pts;
-  let p = pts;
-  for (let k = 0; k < iters; k++) {
-    const out = [p[0]];
-    for (let i = 1; i < p.length - 1; i++) {
-      // Weighted 1-2-1 kernel: keeps endpoints fixed, smooths interior
-      out.push([
-        (p[i-1][0] + p[i][0] * 2 + p[i+1][0]) / 4,
-        (p[i-1][1] + p[i][1] * 2 + p[i+1][1]) / 4
-      ]);
-    }
-    out.push(p[p.length - 1]);
-    p = out;
-  }
+  if(iters<=0||pts.length<3)return pts;
+  let p=pts;
+  for(let k=0;k<iters;k++){const out=[p[0]];for(let i=1;i<p.length-1;i++)out.push([(p[i-1][0]+p[i][0]*2+p[i+1][0])/4,(p[i-1][1]+p[i][1]*2+p[i+1][1])/4]);out.push(p[p.length-1]);p=out;}
   return p;
 }
-
-/* 7. RDP simplification */
 function rdp(pts, tol) {
-  if (pts.length <= 2) return pts;
-  const [x1,y1] = pts[0], [x2,y2] = pts[pts.length-1];
-  const dx = x2-x1, dy = y2-y1, len = Math.sqrt(dx*dx+dy*dy) || 1;
-  let mx = 0, mi = 0;
-  for (let i = 1; i < pts.length-1; i++) {
-    const d = Math.abs(dy*(pts[i][0]-x1) - dx*(pts[i][1]-y1)) / len;
-    if (d > mx) { mx = d; mi = i; }
-  }
-  if (mx > tol)
-    return rdp(pts.slice(0, mi+1), tol).slice(0,-1).concat(rdp(pts.slice(mi), tol));
-  return [pts[0], pts[pts.length-1]];
+  if(pts.length<=2)return pts;
+  const[x1,y1]=pts[0],[x2,y2]=pts[pts.length-1];
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy)||1;
+  let mx=0,mi=0;
+  for(let i=1;i<pts.length-1;i++){const d=Math.abs(dy*(pts[i][0]-x1)-dx*(pts[i][1]-y1))/len;if(d>mx){mx=d;mi=i;}}
+  if(mx>tol)return rdp(pts.slice(0,mi+1),tol).slice(0,-1).concat(rdp(pts.slice(mi),tol));
+  return[pts[0],pts[pts.length-1]];
 }
-
-/* 8. Build smooth SVG path strings with Catmull-Rom → Bézier */
 function buildPaths(contours, simp, tol, smooth) {
-  const out = [];
-  for (let c of contours) {
-    let pts = smooth > 0 ? smoothPath(c, smooth) : c;
-    pts = (simp && pts.length > 2) ? rdp(pts, tol) : pts;
-    if (pts.length < 2) continue;
-    let d = 'M' + pts[0][0] + ',' + pts[0][1];
-    if (pts.length === 2) {
-      d += ' L' + pts[1][0] + ',' + pts[1][1];
-    } else {
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[Math.max(i-2,0)], p1 = pts[i-1];
-        const p2 = pts[i], p3 = pts[Math.min(i+1,pts.length-1)];
-        const t = 0.4;
-        const c1x = p1[0]+(p2[0]-p0[0])*t, c1y = p1[1]+(p2[1]-p0[1])*t;
-        const c2x = p2[0]-(p3[0]-p1[0])*t, c2y = p2[1]-(p3[1]-p1[1])*t;
-        d += ' C'+c1x.toFixed(1)+','+c1y.toFixed(1)+' '+c2x.toFixed(1)+','+c2y.toFixed(1)+' '+p2[0]+','+p2[1];
-      }
-    }
+  const out=[];
+  for(let c of contours){
+    let pts=smooth>0?smoothPath(c,smooth):c;
+    pts=(simp&&pts.length>2)?rdp(pts,tol):pts;
+    if(pts.length<2)continue;
+    let d='M'+pts[0][0]+','+pts[0][1];
+    if(pts.length===2){d+=' L'+pts[1][0]+','+pts[1][1];}
+    else{for(let i=1;i<pts.length;i++){const p0=pts[Math.max(i-2,0)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(i+1,pts.length-1)],t=0.4;const c1x=p1[0]+(p2[0]-p0[0])*t,c1y=p1[1]+(p2[1]-p0[1])*t,c2x=p2[0]-(p3[0]-p1[0])*t,c2y=p2[1]-(p3[1]-p1[1])*t;d+=' C'+c1x.toFixed(1)+','+c1y.toFixed(1)+' '+c2x.toFixed(1)+','+c2y.toFixed(1)+' '+p2[0]+','+p2[1];}}
     out.push(d);
   }
   return out;
 }
 
-/* ═══════════════════════════════════════════
-   PIPELINE
-═══════════════════════════════════════════ */
+/* ── Run pipeline on pixel data, returns paths ── */
 async function runPipeline(px, w, h) {
-  const thresh  = parseInt($('c-thresh').value);
-  const blurR   = parseInt($('c-blur').value);
-  const erodeR  = parseInt($('c-erode').value);
-  const invert  = $('c-invert').checked;
-  const simp    = $('c-simp').checked;
-  const tol     = parseFloat($('c-simp-tol').value);
-  const minLen  = parseInt($('c-minlen').value);
-  const smooth  = parseInt($('c-smooth').value);
-
-  setP(15, 'Grayscale…'); await tick();
-  const gray = toGray(px, w, h);
-
-  setP(28, 'Blur…'); await tick();
-  gaussBlur(gray, w, h, blurR);
-
-  setP(40, 'Binarizing…'); await tick();
-  const bin = binarize(gray, thresh, invert);
-
-  setP(50, 'Eroding…'); await tick();
-  const thin = erode(bin, w, h, erodeR);
-
-  setP(58, 'Thinning (Zhang-Suen)…'); await tick();
-  const skel = zhangSuen(thin, w, h);
-
-  setP(72, 'Tracing paths…'); await tick();
-  const contours = tracePaths(skel, w, h, minLen);
-
-  setP(88, 'Building SVG paths…'); await tick();
-  S.paths = buildPaths(contours, simp, tol, smooth);
-
-  setP(97, 'Rendering…'); await tick();
-  render(S.paths, w, h);
-
-  setP(100, 'Done!'); hideP();
-  statsEl.innerHTML = 'Paths: <span>' + S.paths.length + '</span> &nbsp;|&nbsp; Size: <span>' + w + '×' + h + '</span>';
-  btnDl.disabled = false;
+  const thresh=parseInt($('c-thresh').value), blurR=parseInt($('c-blur').value), erodeR=parseInt($('c-erode').value);
+  const invert=$('c-invert').checked, simp=$('c-simp').checked, tol=parseFloat($('c-simp-tol').value);
+  const minLen=parseInt($('c-minlen').value), smooth=parseInt($('c-smooth').value);
+  setP(15,'Grayscale...'); await tick();
+  const gray=toGray(px,w,h);
+  setP(28,'Blur...'); await tick();
+  gaussBlur(gray,w,h,blurR);
+  setP(40,'Binarizing...'); await tick();
+  const bin=binarize(gray,thresh,invert);
+  setP(50,'Eroding...'); await tick();
+  const thin=erode(bin,w,h,erodeR);
+  setP(58,'Thinning...'); await tick();
+  const skel=zhangSuen(thin,w,h);
+  setP(72,'Tracing paths...'); await tick();
+  const contours=tracePaths(skel,w,h,minLen);
+  setP(88,'Building SVG paths...'); await tick();
+  const paths=buildPaths(contours,simp,tol,smooth);
+  setP(97,'Rendering...'); await tick();
+  S.paths=paths;
+  render(paths,w,h);
+  setP(100,'Done!'); hideP();
+  statsEl.innerHTML='Paths: <span>'+paths.length+'</span> &nbsp;|&nbsp; Size: <span>'+w+'x'+h+'</span>';
+  btnDl.disabled=false;
+  return paths;
 }
 
-/* ── Debounced live update — reuses cached pixels, no canvas redraw ── */
-let liveTimer = null;
-function debouncedLive(delay) {
-  if (!S.cachedPx) return;
-  clearTimeout(liveTimer);
-  liveTimer = setTimeout(liveUpdate, delay === undefined ? 350 : delay);
-}
-async function liveUpdate() {
-  if (!S.cachedPx || S.busy) return;
-  S.busy = true;
-  try {
-    await runPipeline(S.cachedPx, S.W, S.H);
-  } catch (e) {
-    console.error(e); hideP();
-  }
-  S.busy = false;
-}
+/* ── Debounced live update ── */
+let liveTimer=null;
+function debouncedLive(delay){if(!S.cachedPx)return;clearTimeout(liveTimer);liveTimer=setTimeout(liveUpdate,delay===undefined?350:delay);}
+async function liveUpdate(){if(!S.cachedPx||S.busy)return;S.busy=true;try{await runPipeline(S.cachedPx,S.W,S.H);}catch(e){console.error(e);hideP();}S.busy=false;}
 
-/* ── Trace button ── */
+/* ── Trace full image button ── */
 btnTrace.addEventListener('click', async () => {
-  if (!S.img || S.busy) return;
-  S.busy = true; btnTrace.disabled = true;
-  clearTimeout(liveTimer);
-
+  if(!S.img||S.busy)return;
+  S.busy=true; btnTrace.disabled=true; clearTimeout(liveTimer);
   try {
-    setP(5, 'Preparing canvas…'); await tick();
-
-    const origW = S.img.naturalWidth  || S.W;
-    const origH = S.img.naturalHeight || S.H;
-    let outW = S.scale === 'custom' ? (S.cw||origW) : origW * S.scale;
-    let outH = S.scale === 'custom' ? (S.ch||origH) : origH * S.scale;
-    const MAX = 4000;
-    if (outW > MAX || outH > MAX) {
-      const sc = Math.min(MAX/outW, MAX/outH);
-      outW = Math.round(outW*sc); outH = Math.round(outH*sc);
-    }
-    wc.width = outW; wc.height = outH;
-    ctx.clearRect(0, 0, outW, outH);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(S.img, 0, 0, outW, outH);
-    S.W = outW; S.H = outH;
-    S.cachedPx = ctx.getImageData(0, 0, outW, outH).data.slice();
-
-    await runPipeline(S.cachedPx, outW, outH);
-    toast('Done! ' + S.paths.length + ' paths traced.', 'ok');
-  } catch (e) {
-    console.error(e);
-    toast('Error: ' + e.message, 'err');
-    hideP();
-  }
-  S.busy = false; btnTrace.disabled = false;
+    setP(5,'Preparing canvas...'); await tick();
+    const origW=S.img.naturalWidth||S.W, origH=S.img.naturalHeight||S.H;
+    let outW=S.scale==='custom'?(S.cw||origW):origW*S.scale;
+    let outH=S.scale==='custom'?(S.ch||origH):origH*S.scale;
+    const MAX=4000;
+    if(outW>MAX||outH>MAX){const sc=Math.min(MAX/outW,MAX/outH);outW=Math.round(outW*sc);outH=Math.round(outH*sc);}
+    wc.width=outW; wc.height=outH;
+    ctx.clearRect(0,0,outW,outH);
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(S.img,0,0,outW,outH);
+    S.W=outW; S.H=outH;
+    S.cachedPx=ctx.getImageData(0,0,outW,outH).data.slice();
+    await runPipeline(S.cachedPx,outW,outH);
+    toast('Done! '+S.paths.length+' paths traced.','ok');
+  } catch(e){console.error(e);toast('Error: '+e.message,'err');hideP();}
+  S.busy=false; btnTrace.disabled=false;
 });
 
 /* ── Render SVG ── */
 function render(paths, w, h) {
-  const color   = $('c-color').value;
-  const sw      = parseFloat($('c-width').value);
-  const opacity = parseFloat($('c-opacity').value);
-  const pa      = $('prev-area');
-  const sc      = Math.min(1, (pa.clientWidth-64)/w, (pa.clientHeight-64)/h);
-  svgOut.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-  svgOut.style.width  = Math.round(w*sc) + 'px';
-  svgOut.style.height = Math.round(h*sc) + 'px';
-  while (svgOut.firstChild) svgOut.removeChild(svgOut.firstChild);
-  const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bg.setAttribute('width',w); bg.setAttribute('height',h); bg.setAttribute('fill','none');
-  svgOut.appendChild(bg);
-  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-  g.setAttribute('stroke',color); g.setAttribute('stroke-width',sw);
-  g.setAttribute('stroke-opacity',opacity); g.setAttribute('stroke-linecap',S.lineCap);
-  g.setAttribute('stroke-linejoin','round'); g.setAttribute('fill','none');
-  for (const d of paths) {
-    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-    p.setAttribute('d',d); g.appendChild(p);
-  }
+  const color=$('c-color').value, sw=parseFloat($('c-width').value), opacity=parseFloat($('c-opacity').value);
+  const pa=$('prev-area'), sc=Math.min(1,(pa.clientWidth-64)/w,(pa.clientHeight-64)/h);
+  svgOut.setAttribute('viewBox','0 0 '+w+' '+h);
+  svgOut.style.width=Math.round(w*sc)+'px'; svgOut.style.height=Math.round(h*sc)+'px';
+  while(svgOut.firstChild)svgOut.removeChild(svgOut.firstChild);
+  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  bg.setAttribute('width',w); bg.setAttribute('height',h); bg.setAttribute('fill','none'); svgOut.appendChild(bg);
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('stroke',color); g.setAttribute('stroke-width',sw); g.setAttribute('stroke-opacity',opacity);
+  g.setAttribute('stroke-linecap',S.lineCap); g.setAttribute('stroke-linejoin','round'); g.setAttribute('fill','none');
+  for(const d of paths){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',d);g.appendChild(p);}
   svgOut.appendChild(g);
-  emptyEl.style.display = 'none';
-  svgWrap.style.display = 'inline-flex';
+  emptyEl.style.display='none'; svgWrap.style.display='inline-flex';
+}
+function applyStroke(){
+  if(!S.paths.length)return; const g=svgOut.querySelector('g'); if(!g)return;
+  g.setAttribute('stroke',$('c-color').value); g.setAttribute('stroke-width',parseFloat($('c-width').value));
+  g.setAttribute('stroke-opacity',parseFloat($('c-opacity').value)); g.setAttribute('stroke-linecap',S.lineCap);
 }
 
-function applyStroke() {
-  if (!S.paths.length) return;
-  const g = svgOut.querySelector('g');
-  if (!g) return;
-  g.setAttribute('stroke', $('c-color').value);
-  g.setAttribute('stroke-width', parseFloat($('c-width').value));
-  g.setAttribute('stroke-opacity', parseFloat($('c-opacity').value));
-  g.setAttribute('stroke-linecap', S.lineCap);
-}
-
-/* ── Download ── */
+/* ── Single download ── */
 btnDl.addEventListener('click', () => {
-  if (!S.paths.length) return;
-  const w = S.W, h = S.H;
-  const svg = [
+  if(!S.paths.length)return;
+  triggerDownload(buildSVGString(S.paths,S.W,S.H), S.fileName+'-icon.svg');
+  toast('SVG downloaded!','ok');
+});
+
+/* ══════════════════════════════════════════
+   ICON DETECTION & BULK PROCESSING
+══════════════════════════════════════════ */
+
+/* Projection-based icon region detection */
+function detectIconRegions(bin, w, h) {
+  const MIN_SIZE = Math.max(30, Math.min(w, h) * 0.06);
+  const PAD = Math.max(4, Math.floor(Math.min(w, h) * 0.01));
+
+  const rowSum = new Float32Array(h);
+  const colSum = new Float32Array(w);
+  for (let y=0; y<h; y++)
+    for (let x=0; x<w; x++)
+      if (bin[y*w+x]) { rowSum[y]++; colSum[x]++; }
+
+  function findBands(profile, size) {
+    let max = 0;
+    for (let i=0; i<size; i++) if (profile[i]>max) max=profile[i];
+    if (!max) return [];
+    const thresh = max * 0.008; // 0.8% of peak — catches even sparse icons
+    const bands = [];
+    let start = -1;
+    for (let i=0; i<size; i++) {
+      if (start<0 && profile[i]>thresh) { start=i; }
+      else if (start>=0 && profile[i]<=thresh) {
+        if (i-start >= MIN_SIZE) bands.push([Math.max(0,start-PAD), Math.min(size-1,i+PAD)]);
+        start=-1;
+      }
+    }
+    if (start>=0 && size-start>=MIN_SIZE)
+      bands.push([Math.max(0,start-PAD), size-1]);
+    return bands;
+  }
+
+  const rowBands = findBands(rowSum, h);
+  const colBands = findBands(colSum, w);
+
+  if (!rowBands.length || !colBands.length) return [];
+  // If everything collapses to one region, no point splitting
+  if (rowBands.length===1 && colBands.length===1) return [];
+
+  const regions = [];
+  for (const [y1,y2] of rowBands)
+    for (const [x1,x2] of colBands)
+      regions.push({x1,y1,x2,y2});
+
+  regions.sort((a,b)=>a.y1-b.y1||a.x1-b.x1);
+  return regions;
+}
+
+/* Detect button */
+btnDetect.addEventListener('click', () => {
+  if (!S.cachedPx || S.busy) return;
+
+  const thresh = parseInt($('c-thresh').value);
+  const blurR  = parseInt($('c-blur').value);
+  const gray   = toGray(S.cachedPx, S.W, S.H);
+  gaussBlur(gray, S.W, S.H, blurR);
+  const bin = binarize(gray, thresh, $('c-invert').checked);
+
+  const regions = detectIconRegions(bin, S.W, S.H);
+  if (!regions.length) {
+    toast('Could not split icons automatically. Try adjusting Threshold.', 'err');
+    return;
+  }
+
+  // Build thumbnail for each region using the preview canvas
+  const tmp = document.createElement('canvas');
+  const tc  = tmp.getContext('2d');
+
+  detectedRegions = regions.map((r, i) => {
+    const rw=r.x2-r.x1, rh=r.y2-r.y1;
+    tmp.width=rw; tmp.height=rh;
+    tc.drawImage(wc, r.x1, r.y1, rw, rh, 0, 0, rw, rh);
+    return { ...r, id:i, name:S.fileName+'_icon_'+(i+1), dataURL:tmp.toDataURL(), result:null, status:'pending' };
+  });
+
+  renderDetectGrid();
+  $('detect-section').style.display = 'block';
+  $('detect-count').textContent = regions.length + ' icons';
+  $('btn-dl-zip').disabled = true;
+  toast(regions.length + ' icons detected! Click "Trace All Icons".', 'ok');
+});
+
+function renderDetectGrid() {
+  const grid = $('detect-grid');
+  grid.innerHTML = '';
+  const labels = {pending:'Ready', processing:'Processing...', done:'Done', error:'Error'};
+  detectedRegions.forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'di-card'; card.id = 'di-'+r.id;
+    card.innerHTML =
+      '<img class="di-thumb" src="'+r.dataURL+'" alt="">' +
+      '<div class="di-lbl">Icon '+(r.id+1)+'</div>' +
+      '<div class="di-status '+r.status+'">'+labels[r.status]+'</div>' +
+      '<button class="di-dl" '+(r.result?'':'disabled')+' onclick="dlDetected('+r.id+')">Download</button>';
+    grid.appendChild(card);
+  });
+}
+
+function updateDetectCard(r) {
+  const card = document.getElementById('di-'+r.id); if (!card) return;
+  const labels = {pending:'Ready', processing:'Processing...', done:'Done', error:'Error'};
+  card.querySelector('.di-status').className='di-status '+r.status;
+  card.querySelector('.di-status').textContent=labels[r.status];
+  const dlBtn=card.querySelector('.di-dl'); dlBtn.disabled=!r.result;
+}
+
+/* Trace all detected icons */
+$('btn-trace-all').addEventListener('click', async () => {
+  if (S.busy) return;
+  S.busy=true; $('btn-trace-all').disabled=true;
+  $('bulk-prog-wrap').style.display='block';
+
+  const total = detectedRegions.length;
+  const scaleX = S.img.naturalWidth / S.W;
+  const scaleY = S.img.naturalHeight / S.H;
+  const userScale = S.scale==='custom' ? 1 : (typeof S.scale==='number' ? S.scale : 1);
+
+  for (let i=0; i<total; i++) {
+    const r = detectedRegions[i];
+    if (r.status==='done') continue;
+    r.status='processing'; updateDetectCard(r);
+    $('bulk-bar').style.width=Math.round(i/total*100)+'%';
+    $('bulk-lbl').textContent='Tracing icon '+(i+1)+' of '+total+'...';
+
+    try {
+      // Map region from preview space to original image space
+      const origX = r.x1*scaleX, origY = r.y1*scaleY;
+      const origW = (r.x2-r.x1)*scaleX, origH = (r.y2-r.y1)*scaleY;
+      let outW = Math.round(origW*userScale);
+      let outH = Math.round(origH*userScale);
+      const MAX=4000;
+      if(outW>MAX||outH>MAX){const sc=Math.min(MAX/outW,MAX/outH);outW=Math.round(outW*sc);outH=Math.round(outH*sc);}
+      wc.width=outW; wc.height=outH;
+      ctx.clearRect(0,0,outW,outH);
+      ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      ctx.drawImage(S.img, origX, origY, origW, origH, 0, 0, outW, outH);
+      const px=ctx.getImageData(0,0,outW,outH).data.slice();
+      S.W=outW; S.H=outH;
+      const paths=await runPipeline(px,outW,outH);
+      r.result=buildSVGString(paths,outW,outH);
+      r.status='done';
+    } catch(e) { console.error(e); r.status='error'; }
+
+    updateDetectCard(r);
+  }
+
+  $('bulk-bar').style.width='100%';
+  $('bulk-lbl').textContent='All done!';
+  $('btn-dl-zip').disabled=false;
+  S.busy=false; $('btn-trace-all').disabled=false;
+  toast('All '+total+' icons traced! Click Download ZIP.','ok');
+  setTimeout(()=>{ $('bulk-prog-wrap').style.display='none'; },2500);
+});
+
+/* Download ZIP */
+$('btn-dl-zip').addEventListener('click', async () => {
+  const done=detectedRegions.filter(r=>r.result);
+  if(!done.length)return;
+  try {
+    const zip=new JSZip();
+    done.forEach(r=>zip.file(r.name+'.svg',r.result));
+    const blob=await zip.generateAsync({type:'blob'});
+    triggerDownload(blob,(S.fileName||'icons')+'-svg-pack.zip',true);
+    toast('Downloaded '+done.length+' SVG files!','ok');
+  } catch(e){ toast('ZIP error: '+e.message,'err'); }
+});
+
+function dlDetected(id) {
+  const r=detectedRegions[id]; if(!r||!r.result)return;
+  triggerDownload(r.result, r.name+'.svg');
+}
+
+/* ── SVG string helper ── */
+function buildSVGString(paths, w, h) {
+  return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'">',
     '  <rect width="'+w+'" height="'+h+'" fill="none"/>',
     '  <g stroke="'+$('c-color').value+'" stroke-width="'+parseFloat($('c-width').value)+'" stroke-opacity="'+parseFloat($('c-opacity').value)+'" stroke-linecap="'+S.lineCap+'" stroke-linejoin="round" fill="none">',
-    ...S.paths.map(d => '    <path d="'+d+'"/>'),
+    ...paths.map(d=>'    <path d="'+d+'"/>'),
     '  </g>',
     '</svg>'
   ].join('\n');
-  const blob = new Blob([svg], {type: 'image/svg+xml;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = S.fileName + '-icon.svg';
+}
+
+function triggerDownload(data, filename, isBlob=false) {
+  const blob = isBlob ? data : new Blob([data],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('SVG downloaded!', 'ok');
-});
+}
 
 /* ── Reset ── */
 btnReset.addEventListener('click', () => {
-  S.img = null; S.W = 0; S.H = 0; S.paths = []; S.busy = false;
-  S.cachedPx = null;
-  fi.value = '';
-  thumbArea.style.display = 'none';
-  $('thumb-img').src = '';
+  S.img=null; S.W=0; S.H=0; S.paths=[]; S.busy=false; S.cachedPx=null;
+  detectedRegions=[];
+  fi.value='';
+  thumbArea.style.display='none'; $('thumb-img').src='';
   uploadBtn.classList.remove('loaded');
-  $('upload-icon').textContent = '🖼️';
-  $('upload-text').textContent = 'Click to upload image';
-  $('upload-sub').textContent  = 'or drag & drop · PNG, JPG, WebP, SVG…';
-  $('upscale-section').style.display = 'none';
-  $('custom-row').style.display = 'none';
-  document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+  $('upload-icon').textContent='\u{1F5BC}\uFE0F';
+  $('upload-text').textContent='Click to upload image';
+  $('upload-sub').textContent='PNG, JPG, WebP \u2014 single or multi-icon';
+  $('upscale-section').style.display='none'; $('custom-row').style.display='none';
+  document.querySelectorAll('.scale-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('.scale-btn[data-scale="1"]').classList.add('active');
-  while (svgOut.firstChild) svgOut.removeChild(svgOut.firstChild);
-  svgWrap.style.display = 'none';
-  emptyEl.style.display = '';
-  btnTrace.disabled = true; btnDl.disabled = true;
-  statsEl.innerHTML = 'Ready. Upload an image to begin.';
+  $('detect-section').style.display='none'; $('detect-grid').innerHTML='';
+  while(svgOut.firstChild)svgOut.removeChild(svgOut.firstChild);
+  svgWrap.style.display='none'; emptyEl.style.display='';
+  btnTrace.disabled=true; btnDl.disabled=true; btnDetect.disabled=true;
+  statsEl.innerHTML='Ready. Upload an image to begin.';
   toast('Cleared');
 });
 </script>
