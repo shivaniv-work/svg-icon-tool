@@ -204,7 +204,13 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
       <div class="ctrl-label"><span>Min path length (px)</span><span class="val" id="v-minlen">8</span></div>
       <input type="range" id="c-minlen" min="2" max="50" value="8">
     </div>
-    <p class="tip" style="margin-bottom:0;">Removes tiny noise paths. Raise if output is too noisy.</p>
+    <p class="tip">Removes tiny noise paths. Raise if output is too noisy.</p>
+
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span>Path Smoothing</span><span class="val" id="v-smooth">4</span></div>
+      <input type="range" id="c-smooth" min="0" max="10" value="4">
+    </div>
+    <p class="tip" style="margin-bottom:0;">Reduces wobbly/jagged lines from skeletonization. Raise for cleaner curves.</p>
   </div>
 
   <!-- STROKE -->
@@ -409,9 +415,9 @@ function updateSizeLabel() {
 
 /* ── Presets ── */
 const PRESETS = {
-  icon:  { thresh: 128, blur: 1, simp: true, tol: 1.5, minlen: 8  },
-  logo:  { thresh: 160, blur: 1, simp: true, tol: 2.0, minlen: 10 },
-  photo: { thresh: 100, blur: 2, simp: true, tol: 2.5, minlen: 15 }
+  icon:  { thresh: 160, blur: 2, simp: true, tol: 2.0, minlen: 10, smooth: 5 },
+  logo:  { thresh: 170, blur: 1, simp: true, tol: 2.5, minlen: 12, smooth: 4 },
+  photo: { thresh: 100, blur: 2, simp: true, tol: 3.0, minlen: 18, smooth: 3 }
 };
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -422,6 +428,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
     $('c-simp').checked  = p.simp;
     $('c-simp-tol').value = p.tol;   $('v-simp').textContent    = p.tol;
     $('c-minlen').value  = p.minlen; $('v-minlen').textContent  = p.minlen;
+    $('c-smooth').value  = p.smooth; $('v-smooth').textContent  = p.smooth;
     $('simp-row').style.opacity = p.simp ? '1' : '0.4';
     toast('Preset applied — updating preview…', 'ok');
     liveUpdate();
@@ -435,6 +442,7 @@ $('c-thresh').addEventListener('input', () => { $('v-thresh').textContent = $('c
 $('c-blur').addEventListener('input',   () => { $('v-blur').textContent   = $('c-blur').value;   debouncedLive(); });
 $('c-simp-tol').addEventListener('input',() => { $('v-simp').textContent  = $('c-simp-tol').value; debouncedLive(); });
 $('c-minlen').addEventListener('input', () => { $('v-minlen').textContent = $('c-minlen').value; debouncedLive(); });
+$('c-smooth').addEventListener('input', () => { $('v-smooth').textContent = $('c-smooth').value; debouncedLive(); });
 $('c-invert').addEventListener('change',() => debouncedLive(0));
 $('c-simp').addEventListener('change',  () => { $('simp-row').style.opacity = $('c-simp').checked ? '1' : '0.4'; debouncedLive(0); });
 
@@ -615,7 +623,26 @@ function tracePaths(skel, w, h, minLen) {
   return paths;
 }
 
-/* 6. RDP simplification */
+/* 6. Laplacian path smoothing — irons out skeleton jitter */
+function smoothPath(pts, iters) {
+  if (iters <= 0 || pts.length < 3) return pts;
+  let p = pts;
+  for (let k = 0; k < iters; k++) {
+    const out = [p[0]];
+    for (let i = 1; i < p.length - 1; i++) {
+      // Weighted 1-2-1 kernel: keeps endpoints fixed, smooths interior
+      out.push([
+        (p[i-1][0] + p[i][0] * 2 + p[i+1][0]) / 4,
+        (p[i-1][1] + p[i][1] * 2 + p[i+1][1]) / 4
+      ]);
+    }
+    out.push(p[p.length - 1]);
+    p = out;
+  }
+  return p;
+}
+
+/* 7. RDP simplification */
 function rdp(pts, tol) {
   if (pts.length <= 2) return pts;
   const [x1,y1] = pts[0], [x2,y2] = pts[pts.length-1];
@@ -630,11 +657,12 @@ function rdp(pts, tol) {
   return [pts[0], pts[pts.length-1]];
 }
 
-/* 7. Build smooth SVG path strings with Catmull-Rom → Bézier */
-function buildPaths(contours, simp, tol) {
+/* 8. Build smooth SVG path strings with Catmull-Rom → Bézier */
+function buildPaths(contours, simp, tol, smooth) {
   const out = [];
   for (let c of contours) {
-    let pts = (simp && c.length > 2) ? rdp(c, tol) : c;
+    let pts = smooth > 0 ? smoothPath(c, smooth) : c;
+    pts = (simp && pts.length > 2) ? rdp(pts, tol) : pts;
     if (pts.length < 2) continue;
     let d = 'M' + pts[0][0] + ',' + pts[0][1];
     if (pts.length === 2) {
@@ -658,12 +686,13 @@ function buildPaths(contours, simp, tol) {
    PIPELINE
 ═══════════════════════════════════════════ */
 async function runPipeline(px, w, h) {
-  const thresh = parseInt($('c-thresh').value);
-  const blurR  = parseInt($('c-blur').value);
-  const invert = $('c-invert').checked;
-  const simp   = $('c-simp').checked;
-  const tol    = parseFloat($('c-simp-tol').value);
-  const minLen = parseInt($('c-minlen').value);
+  const thresh  = parseInt($('c-thresh').value);
+  const blurR   = parseInt($('c-blur').value);
+  const invert  = $('c-invert').checked;
+  const simp    = $('c-simp').checked;
+  const tol     = parseFloat($('c-simp-tol').value);
+  const minLen  = parseInt($('c-minlen').value);
+  const smooth  = parseInt($('c-smooth').value);
 
   setP(15, 'Grayscale…'); await tick();
   const gray = toGray(px, w, h);
@@ -681,7 +710,7 @@ async function runPipeline(px, w, h) {
   const contours = tracePaths(skel, w, h, minLen);
 
   setP(88, 'Building SVG paths…'); await tick();
-  S.paths = buildPaths(contours, simp, tol);
+  S.paths = buildPaths(contours, simp, tol, smooth);
 
   setP(97, 'Rendering…'); await tick();
   render(S.paths, w, h);
