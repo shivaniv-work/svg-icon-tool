@@ -180,8 +180,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
     </div>
 
     <div class="ctrl-row">
-      <div class="ctrl-label"><span>Darkness Threshold</span><span class="val" id="v-thresh">128</span></div>
-      <input type="range" id="c-thresh" min="10" max="245" value="128">
+      <div class="ctrl-label"><span>Darkness Threshold</span><span class="val" id="v-thresh">100</span></div>
+      <input type="range" id="c-thresh" min="10" max="245" value="100">
     </div>
     <p class="tip">Lower = only very dark pixels traced. Raise if lines are missing.</p>
 
@@ -189,6 +189,12 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
       <div class="ctrl-label"><span>Pre-blur (noise removal)</span><span class="val" id="v-blur">1</span></div>
       <input type="range" id="c-blur" min="0" max="4" value="1">
     </div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span>Stroke Erosion</span><span class="val" id="v-erode">1</span></div>
+      <input type="range" id="c-erode" min="0" max="3" value="1">
+    </div>
+    <p class="tip">Strips anti-aliased edges before thinning. Fixes blob/thick stroke issues.</p>
 
     <div class="toggle-row">
       <span class="toggle-lbl">Simplify paths</span>
@@ -207,8 +213,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
     <p class="tip">Removes tiny noise paths. Raise if output is too noisy.</p>
 
     <div class="ctrl-row">
-      <div class="ctrl-label"><span>Path Smoothing</span><span class="val" id="v-smooth">4</span></div>
-      <input type="range" id="c-smooth" min="0" max="10" value="4">
+      <div class="ctrl-label"><span>Path Smoothing</span><span class="val" id="v-smooth">2</span></div>
+      <input type="range" id="c-smooth" min="0" max="10" value="2">
     </div>
     <p class="tip" style="margin-bottom:0;">Reduces wobbly/jagged lines from skeletonization. Raise for cleaner curves.</p>
   </div>
@@ -415,9 +421,9 @@ function updateSizeLabel() {
 
 /* ── Presets ── */
 const PRESETS = {
-  icon:  { thresh: 160, blur: 2, simp: true, tol: 2.0, minlen: 10, smooth: 5 },
-  logo:  { thresh: 170, blur: 1, simp: true, tol: 2.5, minlen: 12, smooth: 4 },
-  photo: { thresh: 100, blur: 2, simp: true, tol: 3.0, minlen: 18, smooth: 3 }
+  icon:  { thresh: 100, blur: 1, erode: 1, simp: true, tol: 2.0, minlen: 10, smooth: 2 },
+  logo:  { thresh: 110, blur: 1, erode: 1, simp: true, tol: 2.5, minlen: 12, smooth: 3 },
+  photo: { thresh:  90, blur: 2, erode: 0, simp: true, tol: 3.0, minlen: 18, smooth: 2 }
 };
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -425,6 +431,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
     if (!p) return;
     $('c-thresh').value  = p.thresh;  $('v-thresh').textContent  = p.thresh;
     $('c-blur').value    = p.blur;    $('v-blur').textContent    = p.blur;
+    $('c-erode').value   = p.erode;   $('v-erode').textContent   = p.erode;
     $('c-simp').checked  = p.simp;
     $('c-simp-tol').value = p.tol;   $('v-simp').textContent    = p.tol;
     $('c-minlen').value  = p.minlen; $('v-minlen').textContent  = p.minlen;
@@ -443,6 +450,7 @@ $('c-blur').addEventListener('input',   () => { $('v-blur').textContent   = $('c
 $('c-simp-tol').addEventListener('input',() => { $('v-simp').textContent  = $('c-simp-tol').value; debouncedLive(); });
 $('c-minlen').addEventListener('input', () => { $('v-minlen').textContent = $('c-minlen').value; debouncedLive(); });
 $('c-smooth').addEventListener('input', () => { $('v-smooth').textContent = $('c-smooth').value; debouncedLive(); });
+$('c-erode').addEventListener('input', () => { $('v-erode').textContent = $('c-erode').value; debouncedLive(0); });
 $('c-invert').addEventListener('change',() => debouncedLive(0));
 $('c-simp').addEventListener('change',  () => { $('simp-row').style.opacity = $('c-simp').checked ? '1' : '0.4'; debouncedLive(0); });
 
@@ -505,7 +513,24 @@ function binarize(g, thresh, invert) {
   return b;
 }
 
-/* 4. Zhang-Suen Thinning — reduces strokes to single-pixel centerlines */
+/* 4. Morphological erosion — strips r pixels from foreground edges */
+function erode(bin, w, h, r) {
+  if (r === 0) return bin;
+  const out = new Uint8Array(w * h);
+  for (let y = r; y < h - r; y++) {
+    for (let x = r; x < w - r; x++) {
+      if (!bin[y*w+x]) continue;
+      let ok = true;
+      outer: for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++)
+          if (!bin[(y+dy)*w+(x+dx)]) { ok = false; break outer; }
+      out[y*w+x] = ok ? 1 : 0;
+    }
+  }
+  return out;
+}
+
+/* 5. Zhang-Suen Thinning — reduces strokes to single-pixel centerlines */
 function zhangSuen(bin, w, h) {
   const img = new Uint8Array(bin);
 
@@ -688,6 +713,7 @@ function buildPaths(contours, simp, tol, smooth) {
 async function runPipeline(px, w, h) {
   const thresh  = parseInt($('c-thresh').value);
   const blurR   = parseInt($('c-blur').value);
+  const erodeR  = parseInt($('c-erode').value);
   const invert  = $('c-invert').checked;
   const simp    = $('c-simp').checked;
   const tol     = parseFloat($('c-simp-tol').value);
@@ -703,8 +729,11 @@ async function runPipeline(px, w, h) {
   setP(40, 'Binarizing…'); await tick();
   const bin = binarize(gray, thresh, invert);
 
-  setP(55, 'Thinning (Zhang-Suen)…'); await tick();
-  const skel = zhangSuen(bin, w, h);
+  setP(50, 'Eroding…'); await tick();
+  const thin = erode(bin, w, h, erodeR);
+
+  setP(58, 'Thinning (Zhang-Suen)…'); await tick();
+  const skel = zhangSuen(thin, w, h);
 
   setP(72, 'Tracing paths…'); await tick();
   const contours = tracePaths(skel, w, h, minLen);
